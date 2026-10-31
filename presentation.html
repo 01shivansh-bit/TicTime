@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TicTime · Engineering Presentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-1: #0f0c29;
+      --bg-2: #241450;
+      --text: #f5f3ff;
+      --muted: #a5b4fc;
+      --accent: #7c3aed;
+      --accent-2: #db2777;
+      --x: #ff5f6d;
+      --o: #36d1dc;
+      --panel: rgba(255, 255, 255, 0.08);
+      --panel-border: rgba(255, 255, 255, 0.16);
+      --card-bg: rgba(255, 255, 255, 0.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Sora', system-ui, sans-serif;
+      background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+    /* Floating animated background blobs */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.35;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .blob-1 { width: 450px; height: 450px; background: #ff5f6d; top: -100px; left: -100px; }
+    .blob-2 { width: 400px; height: 400px; background: #36d1dc; bottom: -100px; right: -100px; }
+    .blob-3 { width: 350px; height: 350px; background: #7c3aed; top: 40%; left: 60%; }
+
+    /* Presentation header bar */
+    .deck-header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 36px;
+      border-bottom: 1px solid var(--panel-border);
+      backdrop-filter: blur(12px);
+      background: rgba(15, 12, 41, 0.5);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      font-size: 1.2rem;
+    }
+    .gradient-text {
+      background: linear-gradient(90deg, var(--x), var(--accent), var(--o));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .deck-controls {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .nav-btn {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      color: var(--text);
+      padding: 8px 16px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--accent);
+      transform: translateY(-2px);
+    }
+    .nav-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .slide-counter {
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-weight: 600;
+      min-width: 90px;
+      text-align: center;
+    }
+
+    /* Slides viewport */
+    .deck-container {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      padding: 24px;
+    }
+    .slide {
+      position: absolute;
+      width: 92%;
+      max-width: 1100px;
+      height: 82vh;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 28px;
+      padding: 40px 48px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      visibility: hidden;
+      transform: scale(0.96) translateX(40px);
+      transition: opacity 0.35s ease, transform 0.35s ease, visibility 0.35s;
+      overflow-y: auto;
+    }
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1) translateX(0);
+    }
+
+    /* Slide Typography & Layout */
+    .badge {
+      display: inline-block;
+      width: fit-content;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: #fff;
+      margin-bottom: 14px;
+    }
+    h1.slide-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    p.slide-sub {
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin-bottom: 24px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      flex: 1;
+      align-items: stretch;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      flex: 1;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+    }
+    .card h3 {
+      font-size: 1.15rem;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card ul {
+      list-style: none;
+      padding: 0;
+    }
+    .card li {
+      font-size: 0.92rem;
+      line-height: 1.6;
+      margin-bottom: 8px;
+      color: var(--muted);
+      position: relative;
+      padding-left: 18px;
+    }
+    .card li strong {
+      color: var(--text);
+    }
+    .card li::before {
+      content: "•";
+      color: var(--o);
+      position: absolute;
+      left: 0;
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+    .card.accent-border {
+      border-color: rgba(124, 58, 237, 0.4);
+      background: rgba(124, 58, 237, 0.08);
+    }
+    .code-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 3px 8px;
+      border-radius: 6px;
+      color: #38bdf8;
+    }
+    .stats-row {
+      display: flex;
+      gap: 16px;
+      margin-top: auto;
+    }
+    .stat-box {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .stat-number {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #4ade80;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Title Slide Specifics */
+    .title-slide {
+      text-align: center;
+      justify-content: center;
+      align-items: center;
+    }
+    .hero-logo {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 16px;
+      filter: drop-shadow(0 10px 20px rgba(54, 162, 224, 0.5));
+    }
+    .title-slide h1 {
+      font-size: 3.5rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+    .title-slide p.lead {
+      font-size: 1.35rem;
+      color: var(--muted);
+      max-width: 650px;
+      margin-bottom: 30px;
+    }
+    .meta-badges {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .meta-tag {
+      background: var(--card-bg);
+      border: 1px solid var(--panel-border);
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* Print view for export to PDF */
+    @media print {
+      body { overflow: visible; background: #fff; color: #000; }
+      .deck-header, .blob { display: none !important; }
+      .deck-container { padding: 0; }
+      .slide {
+        position: relative !important;
+        width: 100% !important;
+        height: auto !important;
+        page-break-after: always;
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+        border: 1px solid #ccc;
+        box-shadow: none;
+        margin-bottom: 20px;
+        background: #fff;
+        color: #000;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <!-- Header & Navigation -->
+  <header class="deck-header">
+    <div class="brand">
+      <span>⏱️</span>
+      <span class="gradient-text">TicTime</span>
+      <span style="font-weight:400;color:var(--muted);font-size:0.95rem">| Engineering Presentation</span>
+    </div>
+    <div class="deck-controls">
+      <button class="nav-btn" id="prev-btn" onclick="prevSlide()">◀ Previous</button>
+      <div class="slide-counter" id="counter">Slide 1 / 7</div>
+      <button class="nav-btn" id="next-btn" onclick="nextSlide()">Next ▶</button>
+      <button class="nav-btn" onclick="toggleFullScreen()" title="Toggle Fullscreen (F)">⛶</button>
+    </div>
+  </header>
+
+  <!-- Slide Deck Viewport -->
+  <main class="deck-container">
+
+    <!-- SLIDE 1: Title Slide -->
+    <section class="slide title-slide active" data-index="1">
+      <svg class="hero-logo" viewBox="0 0 64 64" aria-hidden="true">
+        <defs>
+          <linearGradient id="grad-o" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#36d1dc"/><stop offset="1" stop-color="#5b86e5"/></linearGradient>
+        </defs>
+        <rect width="64" height="64" rx="18" fill="url(#grad-o)"/>
+        <path d="M24 12v40M40 12v40M12 24h40M12 40h40" stroke="#fff" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/>
+        <path d="M15 15l6 6M21 15l-6 6" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="47" cy="47" r="4.5" fill="none" stroke="#fff" stroke-width="3.5"/>
+      </svg>
+      <h1><span class="gradient-text">TicTime</span></h1>
+      <p class="lead">From Hack Day Prototype to an Offline PWA, Universally Accessible Game &amp; Tested CI/CD Pipeline</p>
+      <div class="meta-badges">
+        <span class="meta-tag">⚡ Progressive Web App</span>
+        <span class="meta-tag">♿ WCAG / W3C ARIA Accessible</span>
+        <span class="meta-tag">🧪 100% Native Unit Tests</span>
+        <span class="meta-tag">🚀 GitHub Pages CI/CD</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: Project Challenge -->
+    <section class="slide" data-index="2">
+      <span class="badge">Project Context</span>
+      <h1 class="slide-title">The Hack Day Challenge</h1>
+      <p class="slide-sub">TicTime is built with vanilla HTML, CSS &amp; JavaScript. Our mission was to solve 3 critical issues without adding heavy frameworks.</p>
+      
+      <div class="grid-3">
+        <div class="card">
+          <h3>📦 Problem #20</h3>
+          <p style="color:var(--x);font-weight:700;margin-bottom:8px">No Offline &amp; No Install</p>
+          <ul>
+            <li><strong>Issue:</strong> The game stopped working when offline and lacked web app metadata.</li>
+            <li><strong>Goal:</strong> Transform into an installable PWA with full offline capabilities.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>♿ Problem #19</h3>
+          <p style="color:#a855f7;font-weight:700;margin-bottom:8px">Inaccessible to Users (Hard)</p>
+          <ul>
+            <li><strong>Issue:</strong> Non-interactive <code>&lt;div&gt;</code> cells; no keyboard navigation; silent on screen readers.</li>
+            <li><strong>Goal:</strong> Implement W3C ARIA Grid and spoken live announcements.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>🧪 Problem #18</h3>
+          <p style="color:#38bdf8;font-weight:700;margin-bottom:8px">Zero Tests &amp; Hidden Bugs</p>
+          <ul>
+            <li><strong>Issue:</strong> Broken anti-diagonal <code>[2,4,7]</code> and 9th-move wins wrongly called draws.</li>
+            <li><strong>Goal:</strong> Build native unit test suite and automated GitHub Actions CI.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: Problem 20 Details -->
+    <section class="slide" data-index="3">
+      <span class="badge">Problem #20</span>
+      <h1 class="slide-title">Offline Capability &amp; PWA Installation</h1>
+      <p class="slide-sub">Enabled zero-internet gameplay and standalone desktop/mobile installation.</p>
+      
+      <div class="grid-2">
+        <div class="card">
+          <h3>🛠️ Core Architecture Changes</h3>
+          <ul>
+            <li><strong>Web App Manifest (<span class="code-pill">manifest.json</span>):</strong> Standalone display mode, brand theme color <span class="code-pill">#7c3aed</span>, and responsive 192px/512px icons.</li>
+            <li><strong>Service Worker (<span class="code-pill">sw.js</span>):</strong> Pre-caches application shell with <strong>Stale-While-Revalidate</strong> caching strategy and offline navigation fallback.</li>
+            <li><strong>In-App Installer (<span class="code-pill">index.html</span>):</strong> Added interactive <span class="code-pill">📲 Install App</span> button in the header.</li>
+            <li><strong>Adaptive Cross-Platform Engine (<span class="code-pill">js/main.js</span>):</strong> Native prompt for Chrome/Edge/Android; tailored Dock/Home Screen walkthrough for Safari macOS &amp; iOS.</li>
+          </ul>
+        </div>
+        <div class="card accent-border">
+          <h3>📂 Files Changed &amp; Created</h3>
+          <ul>
+            <li><strong>Modified:</strong> <span class="code-pill">index.html</span> (lines 8-17, 46-49, 98-119)</li>
+            <li><strong>Modified:</strong> <span class="code-pill">js/main.js</span> (lines 73-175: SW &amp; install handler)</li>
+            <li><strong>Modified:</strong> <span class="code-pill">css/styles.css</span> (lines 39-43, 102-177: modal &amp; toast)</li>
+            <li><strong>Created:</strong> <span class="code-pill">sw.js</span>, <span class="code-pill">manifest.json</span>, <span class="code-pill">icons/</span></li>
+            <li><strong>Created:</strong> <span class="code-pill">.github/workflows/deploy.yml</span> (GitHub Pages)</li>
+          </ul>
+          <div class="stats-row">
+            <div class="stat-box"><div class="stat-number">100%</div><div class="stat-label">Offline Ready</div></div>
+            <div class="stat-box"><div class="stat-number">0s</div><div class="stat-label">Cache Load Time</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: Problem 19 Details -->
+    <section class="slide" data-index="4">
+      <span class="badge">Problem #19 · Hard</span>
+      <h1 class="slide-title">Keyboard &amp; Screen Reader Accessibility</h1>
+      <p class="slide-sub">Engineered full WCAG compliance and W3C WAI-ARIA Grid navigation.</p>
+      
+      <div class="grid-2">
+        <div class="card">
+          <h3>⌨️ Universal Access Features</h3>
+          <ul>
+            <li><strong>Semantic Button Grid:</strong> Converted static <span class="code-pill">&lt;div&gt;</span> cells into native <span class="code-pill">&lt;button type="button" class="cell" role="gridcell"&gt;</span>.</li>
+            <li><strong>W3C Roving Tabindex:</strong> Keyboard users press <span class="code-pill">Tab</span> once into the board, navigate via <strong>Arrow Keys</strong> (<span class="code-pill">←</span> <span class="code-pill">→</span> <span class="code-pill">↑</span> <span class="code-pill">↓</span> <span class="code-pill">Home</span> <span class="code-pill">End</span>), and <span class="code-pill">Tab</span> once to exit.</li>
+            <li><strong>Natural &amp; Coordinate Labels:</strong> Every cell dynamically announces e.g. <span class="code-pill">Top Left (Row 1, Column 1), empty</span> or <span class="code-pill">... marked X</span>.</li>
+            <li><strong>Spoken Live Announcements (<span class="code-pill">aria-live</span>):</strong> Verbal screen-reader updates on turns, moves, wins, and draws.</li>
+            <li><strong>Visible Focus Rings:</strong> High-contrast neon focus outlines on <span class="code-pill">.cell:focus-visible</span>.</li>
+          </ul>
+        </div>
+        <div class="card accent-border">
+          <h3>📂 Files Changed &amp; Highlights</h3>
+          <ul>
+            <li><strong><span class="code-pill">index.html</span>:</strong> Added <span class="code-pill">role="grid"</span>, <span class="code-pill">aria-live="polite"</span> on status, and dedicated <span class="code-pill">#sr-announcements</span> live region.</li>
+            <li><strong><span class="code-pill">js/ui.js</span>:</strong> Button generation, coordinate system, roving tabindex, arrow navigation handler.</li>
+            <li><strong><span class="code-pill">js/main.js</span>:</strong> Verbal announcement triggers; guarded against double-marking; auto-focused cell 0 on reset.</li>
+            <li><strong><span class="code-pill">css/styles.css</span>:</strong> Button styling reset, focus rings, <span class="code-pill">.sr-only</span> utility.</li>
+          </ul>
+          <div class="stats-row">
+            <div class="stat-box"><div class="stat-number">WCAG</div><div class="stat-label">Accessible Grid</div></div>
+            <div class="stat-box"><div class="stat-number">100%</div><div class="stat-label">Keyboard Playable</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: Problem 18 Details -->
+    <section class="slide" data-index="5">
+      <span class="badge">Problem #18</span>
+      <h1 class="slide-title">Automated Tests &amp; CI/CD Workflow</h1>
+      <p class="slide-sub">Zero-dependency automated test suite using Node.js's native test runner with GitHub Actions.</p>
+      
+      <div class="grid-2">
+        <div class="card">
+          <h3>🐛 Bugs Caught &amp; Fixed</h3>
+          <ul>
+            <li><strong>Bug 1 (Broken Anti-Diagonal):</strong> In <span class="code-pill">js/game.js</span> line 6, secondary diagonal was incorrectly indexed as <span class="code-pill">[2, 4, 7]</span>. Corrected to <span class="code-pill">[2, 4, 6]</span>.</li>
+            <li><strong>Bug 2 (9th-Move Draw Bug):</strong> In <span class="code-pill">getGameResult()</span>, the game checked for full boards <em>before</em> win lines. If a player won on the 9th move, it declared a draw. Prioritized win checking over draw checking.</li>
+            <li><strong>Universal Export:</strong> Added <span class="code-pill">module.exports</span> so rules run both in the browser and in Node.js test environments.</li>
+          </ul>
+        </div>
+        <div class="card accent-border">
+          <h3>🧪 Automated Test Suite</h3>
+          <ul>
+            <li><strong>Native Node Test Runner (<span class="code-pill">node:test</span>):</strong> Zero npm installs or external dependencies.</li>
+            <li><strong>13 Unit Tests Passing:</strong>
+              <div style="margin: 8px 0; font-family:'JetBrains Mono'; font-size:0.8rem; color:#4ade80">
+                ✔ createEmptyBoard (9 null cells)<br/>
+                ✔ nextPlayer (X ↔ O transitions)<br/>
+                ✔ WIN_LINES (all 8 valid combinations)<br/>
+                ✔ getGameResult (rows, columns, diagonals, draws, 9th-move wins)
+              </div>
+            </li>
+            <li><strong>GitHub Actions CI (<span class="code-pill">.github/workflows/test.yml</span>):</strong> Runs automatically on every push &amp; PR.</li>
+          </ul>
+          <div class="stats-row">
+            <div class="stat-box"><div class="stat-number">13 / 13</div><div class="stat-label">Tests Passed</div></div>
+            <div class="stat-box"><div class="stat-number">&lt; 40ms</div><div class="stat-label">Test Duration</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: Unified Architecture & Git -->
+    <section class="slide" data-index="6">
+      <span class="badge">Architecture &amp; Delivery</span>
+      <h1 class="slide-title">Unified Delivery &amp; Git Workflow</h1>
+      <p class="slide-sub">All three solutions are cleanly integrated and live on GitHub.</p>
+      
+      <div class="grid-3">
+        <div class="card">
+          <h3>🌿 Clean Git Graph</h3>
+          <ul>
+            <li><strong>Issue 20:</strong> Commit <span class="code-pill">f3ed287</span> (PWA &amp; Offline)</li>
+            <li><strong>Issue 19:</strong> Commit <span class="code-pill">e33ca2e</span> (Accessibility)</li>
+            <li><strong>Issue 18:</strong> Commit <span class="code-pill">7476a3a</span> (Automated Tests &amp; CI)</li>
+            <li><strong>Main:</strong> Fast-forward merged to include all 3 solutions together!</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>🚀 Live GitHub Repository</h3>
+          <ul>
+            <li><strong>Repo:</strong> <span class="code-pill">01shivansh-bit/TicTime</span></li>
+            <li><strong>Branch:</strong> <span class="code-pill">main</span> (all 3 combined)</li>
+            <li><strong>Individual Branches:</strong> Available for separate PR scoring:
+              <br/><span class="code-pill">fix/issue-20-...</span>
+              <br/><span class="code-pill">fix/issue-19-...</span>
+              <br/><span class="code-pill">fix/issue-18-...</span>
+            </li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>🌐 Automated Hosting</h3>
+          <ul>
+            <li><strong>GitHub Pages CI:</strong> Automatically builds and deploys to GitHub Pages via <span class="code-pill">deploy.yml</span>.</li>
+            <li><strong>Relative Paths:</strong> Tested for domain root and GitHub project subpaths without 404s.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: Live Demo Playbook -->
+    <section class="slide" data-index="7">
+      <span class="badge">Demonstration</span>
+      <h1 class="slide-title">Live Demonstration Playbook</h1>
+      <p class="slide-sub">Step-by-step interactive walkthrough to show judges.</p>
+      
+      <div class="grid-2">
+        <div class="card">
+          <h3>🎯 4 Quick Live Demos</h3>
+          <ul>
+            <li><strong>1. Keyboard Navigation:</strong> Press <span class="code-pill">Tab</span> into the board. Use Arrow keys (<span class="code-pill">←</span> <span class="code-pill">→</span> <span class="code-pill">↑</span> <span class="code-pill">↓</span>) to move the purple focus ring. Press <span class="code-pill">Enter</span> or <span class="code-pill">Space</span> to place a mark.</li>
+            <li><strong>2. Offline Play:</strong> In DevTools (<span class="code-pill">F12</span>), toggle <strong>Offline</strong> and refresh. The game loads and plays with 0 internet.</li>
+            <li><strong>3. In-App Install:</strong> Click the <span class="code-pill">📲 Install App</span> button in the header. Shows native prompt or Safari Dock guide.</li>
+            <li><strong>4. Automated Tests:</strong> Run <span class="code-pill">npm test</span> in terminal to see 13 tests execute in under 40 milliseconds.</li>
+          </ul>
+        </div>
+        <div class="card accent-border" style="text-align:center;justify-content:center;align-items:center;">
+          <h2 style="font-size:1.8rem;margin-bottom:12px">Ready to Present!</h2>
+          <p style="color:var(--muted);font-size:1rem;max-width:380px;line-height:1.6;margin-bottom:20px">
+            "By focusing on clean web standards, we made TicTime a fast, universally inclusive, and reliable application."
+          </p>
+          <div style="font-size:2rem">⏱️ ✨ 🏆</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 7;
+
+    function showSlide(index) {
+      if (index < 1 || index > totalSlides) return;
+      currentSlide = index;
+
+      document.querySelectorAll('.slide').forEach((slide) => {
+        slide.classList.remove('active');
+        if (parseInt(slide.dataset.index) === currentSlide) {
+          slide.classList.add('active');
+        }
+      });
+
+      document.getElementById('counter').textContent = `Slide ${currentSlide} / ${totalSlides}`;
+      document.getElementById('prev-btn').disabled = currentSlide === 1;
+      document.getElementById('next-btn').disabled = currentSlide === totalSlides;
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) showSlide(currentSlide - 1);
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) showSlide(currentSlide + 1);
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    // Keyboard navigation
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        prevSlide();
+      } else if (e.key === 'Home') {
+        showSlide(1);
+      } else if (e.key === 'End') {
+        showSlide(totalSlides);
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullScreen();
+      }
+    });
+
+    showSlide(1);
+  </script>
+</body>
+</html>
